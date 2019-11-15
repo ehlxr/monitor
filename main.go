@@ -117,7 +117,9 @@ func dingToInfo(msg string) []byte {
 			err)
 
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, _ := ioutil.ReadAll(resp.Body)
 	log.Info("send to %s data <%s> result is %s",
