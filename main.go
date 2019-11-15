@@ -33,7 +33,7 @@ GoVersion: %s
 	bannerBase64 = "DQogX19fXyAgX19fXyAgICBfX18gIF9fX19fIA0KKCAgXyBcKCAgXyBcICAvIF9fKSggIF8gICkNCiApKF8pICkpKF8pICkoIChfLS4gKShfKSggDQooX19fXy8oX19fXy8gIFxfX18vKF9fX19fKQ0K"
 
 	opts struct {
-		MonitorFile string `short:"m" long:"monitor-file" env:"MONITOR_FILE" description:"The file to be monitored" required:"true"`
+		MonitorFile string `short:"f" long:"monitor-file" env:"MONITOR_FILE" description:"The file to be monitored" required:"true"`
 		KeyWord     string `short:"k" long:"key-word" env:"KEY_WORD" description:"Key word to be filter" required:"true"`
 		WebHookUrl  string `short:"u" long:"webhook-url" env:"URL" description:"Webhook url of dingtalk" required:"true"`
 		Version     bool   `short:"v" long:"version" description:"Show version info"`
@@ -55,12 +55,12 @@ func main() {
 	if err != nil {
 		log.Fatal("Tail file %+v", err)
 	}
+	log.Info("monitor file %s...", opts.MonitorFile)
 
 	for line := range tf.Lines {
 		if ok, _ := regexp.Match(opts.KeyWord, []byte(line.Text)); ok {
 			log.Info("%s", dingToInfo(line.Text))
 		}
-
 	}
 }
 
