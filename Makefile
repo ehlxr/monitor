@@ -13,11 +13,11 @@ LD_GO_VERSION	:= -X '$(VERSION_PATH).GoVersion=`go version`'
 LD_VERSION		:= -X '$(VERSION_PATH).Version=$(BUILD_VERSION)'
 LD_FLAGS		:= "$(LD_APP_NAMW) $(LD_GIT_COMMIT) $(LD_BUILD_TIME) $(LD_GO_VERSION) $(LD_VERSION) -w -s"
 
-RELEASE_VERSION = $(version)
-REGISTRY_URL    = $(url)
+DOCKER_TAG 		:= $(tag)
+REGISTRY_URL	:= $(url)
 
-ifeq ("$(RELEASE_VERSION)","")
-	RELEASE_VERSION	:= $(shell echo `date "+%Y%m%d_%H%M%S"`)
+ifeq ("$(DOCKER_TAG)","")
+	DOCKER_TAG	:= $(shell echo `date "+%Y%m%d_%H%M%S"`)
 endif
 
 .PHONY : build release clean install upx docker-push docker
@@ -33,15 +33,15 @@ endif
 
 docker: build upx
 ifneq ("$(REGISTRY_URL)","")
-	@echo ========== current docker tag is: $(RELEASE_VERSION) ==========
+	@echo ========== current docker tag is: $(DOCKER_TAG) ==========
 
-	docker build -t $(REGISTRY_URL)/monitor_server:$(RELEASE_VERSION) -f Dockerfile .
+	docker build -t $(REGISTRY_URL)/monitor_server:$(DOCKER_TAG) -f Dockerfile .
 else
 	@echo "url arg should not be empty"
 endif
 
 docker-push: docker
-	docker push $(REGISTRY_URL)/monitor_server:$(RELEASE_VERSION)
+	docker push $(REGISTRY_URL)/monitor_server:$(DOCKER_TAG)
 
 clean:
 	rm -rf $(DIST_DIR)*

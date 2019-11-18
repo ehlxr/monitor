@@ -33,12 +33,16 @@ GoVersion: %s
 	bannerBase64 = "DQogX19fXyAgX19fXyAgICBfX18gIF9fX19fIA0KKCAgXyBcKCAgXyBcICAvIF9fKSggIF8gICkNCiApKF8pICkpKF8pICkoIChfLS4gKShfKSggDQooX19fXy8oX19fXy8gIFxfX18vKF9fX19fKQ0K"
 
 	opts struct {
-		MonitorFile string `short:"f" long:"monitor-file" env:"MONITOR_FILE" description:"The file to be monitored" required:"true"`
-		KeyWord     string `short:"k" long:"key-word" env:"KEY_WORD" description:"Key word to be filter" required:"true"`
-		WebHookUrl  string `short:"u" long:"webhook-url" env:"URL" description:"Webhook url of dingtalk" required:"true"`
-		Version     bool   `short:"v" long:"version" description:"Show version info"`
+		Version bool    `short:"v" long:"version" description:"Show version info"`
+		Monitor monitor `group:"MONITOR" env-namespace:"MONITOR"`
 	}
 )
+
+type monitor struct {
+	File       string `short:"f" long:"file" env:"FILE" description:"The file to be monitored" required:"true"`
+	KeyWord    string `short:"k" long:"key-word" env:"KEY_WORD" description:"Key word to be filter" required:"true"`
+	WebHookUrl string `short:"u" long:"dt-wh-url" env:"DT_WH_URL" description:"Webhook url of dingtalk" required:"true"`
+}
 
 func init() {
 	initLog()
@@ -47,18 +51,19 @@ func init() {
 func main() {
 	parseArg()
 
-	tf, err := tail.TailFile(opts.MonitorFile,
+	tf, err := tail.TailFile(opts.Monitor.File,
 		tail.Config{
+			ReOpen:   true,
 			Follow:   true,
 			Location: &tail.SeekInfo{Offset: 0, Whence: 2},
 		})
 	if err != nil {
 		log.Fatal("Tail file %+v", err)
 	}
-	log.Info("monitor file %s...", opts.MonitorFile)
+	log.Info("monitor file %s...", opts.Monitor.File)
 
 	for line := range tf.Lines {
-		if ok, _ := regexp.Match(opts.KeyWord, []byte(line.Text)); ok {
+		if ok, _ := regexp.Match(opts.Monitor.KeyWord, []byte(line.Text)); ok {
 			log.Info("%s", dingToInfo(line.Text))
 		}
 	}
@@ -105,15 +110,15 @@ func dingToInfo(msg string) []byte {
 	b, _ := json.Marshal(data)
 
 	log.Info("send to %s data <%s>",
-		opts.WebHookUrl,
+		opts.Monitor.WebHookUrl,
 		b)
 
-	resp, err := http.Post(opts.WebHookUrl,
+	resp, err := http.Post(opts.Monitor.WebHookUrl,
 		"application/json",
 		bytes.NewBuffer(b))
 	if err != nil {
 		log.Error("send request to %s %+v",
-			opts.WebHookUrl,
+			opts.Monitor.WebHookUrl,
 			err)
 
 	}
@@ -123,7 +128,7 @@ func dingToInfo(msg string) []byte {
 
 	body, _ := ioutil.ReadAll(resp.Body)
 	log.Info("send to %s data <%s> result is %s",
-		opts.WebHookUrl,
+		opts.Monitor.WebHookUrl,
 		b,
 		body)
 	return body
