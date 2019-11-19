@@ -30,7 +30,7 @@ GitCommit: %s
 GoVersion: %s
 
 `
-	bannerBase64 = "DQogX19fXyAgX19fXyAgICBfX18gIF9fX19fIA0KKCAgXyBcKCAgXyBcICAvIF9fKSggIF8gICkNCiApKF8pICkpKF8pICkoIChfLS4gKShfKSggDQooX19fXy8oX19fXy8gIFxfX18vKF9fX19fKQ0K"
+	bannerBase64 = "DQogX18gIF9fICBfX19fXyAgXyAgXyAgX19fXyAgX19fXyAgX19fX18gIF9fX18gDQooICBcLyAgKSggIF8gICkoIFwoICkoXyAgXykoXyAgXykoICBfICApKCAgXyBcDQogKSAgICAoICApKF8pKCAgKSAgKCAgXykoXyAgICkoICAgKShfKSggICkgICAvDQooXy9cL1xfKShfX19fXykoXylcXykoX19fXykgKF9fKSAoX19fX18pKF8pXF8pDQo="
 
 	opts struct {
 		Version bool    `short:"v" long:"version" description:"Show version info"`
