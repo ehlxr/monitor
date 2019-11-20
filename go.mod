@@ -3,6 +3,7 @@ module github.com/ehlxr/monitor
 go 1.13
 
 require (
+	github.com/JetBlink/dingtalk-notify-go-sdk v0.0.0-20191112085213-0dc836cea13e
 	github.com/fsnotify/fsnotify v1.4.7 // indirect
 	github.com/hpcloud/tail v1.0.1-0.20180514194441-a1dbeea552b7
 	github.com/jessevdk/go-flags v1.4.1-0.20181221193153-c0795c8afcf4

@@ -1,16 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"github.com/hpcloud/tail"
 	"github.com/jessevdk/go-flags"
-	"io/ioutil"
 	log "unknwon.dev/clog/v2"
 
-	"net/http"
+	dt "github.com/JetBlink/dingtalk-notify-go-sdk"
 	"os"
 	"regexp"
 )
@@ -33,15 +30,18 @@ GoVersion: %s
 	bannerBase64 = "DQogX18gIF9fICBfX19fXyAgXyAgXyAgX19fXyAgX19fXyAgX19fX18gIF9fX18gDQooICBcLyAgKSggIF8gICkoIFwoICkoXyAgXykoXyAgXykoICBfICApKCAgXyBcDQogKSAgICAoICApKF8pKCAgKSAgKCAgXykoXyAgICkoICAgKShfKSggICkgICAvDQooXy9cL1xfKShfX19fXykoXylcXykoX19fXykgKF9fKSAoX19fX18pKF8pXF8pDQo="
 
 	opts struct {
-		Version bool    `short:"v" long:"version" description:"Show version info"`
-		Monitor monitor `group:"MONITOR" env-namespace:"MONITOR"`
+		File    string `short:"f" long:"monitor-file" env:"MONITOR_FILE" description:"The file to be monitored" required:"true"`
+		KeyWord string `short:"k" long:"search-keyword" env:"SEARCH_KEYWORD" description:"Key word to be search for" required:"true"`
+		Version bool   `short:"v" long:"version" description:"Show version info"`
+		Robot   robot  `group:"DingTalk Robot Options" namespace:"robot" env-namespace:"ROBOT" `
 	}
 )
 
-type monitor struct {
-	File       string `short:"f" long:"file" env:"FILE" description:"The file to be monitored" required:"true"`
-	KeyWord    string `short:"k" long:"key-word" env:"KEY_WORD" description:"Key word to be filter" required:"true"`
-	WebHookUrl string `short:"u" long:"dt-wh-url" env:"DT_WH_URL" description:"Webhook url of dingtalk" required:"true"`
+type robot struct {
+	Token     string   `short:"t" long:"token" env:"TOKEN" description:"DingTalk robot access token" required:"true"`
+	Secret    string   `short:"s" long:"secret" env:"SECRET" description:"DingTalk robot secret"`
+	AtMobiles []string `short:"m" long:"at-mobiles" env:"AT_MOBILES" env-delim:"," description:"The mobile of the person will be at"`
+	IsAtAll   bool     `short:"a" long:"at-all" env:"AT_ALL" description:"Whether at everyone"`
 }
 
 func init() {
@@ -51,7 +51,7 @@ func init() {
 func main() {
 	parseArg()
 
-	tf, err := tail.TailFile(opts.Monitor.File,
+	tf, err := tail.TailFile(opts.File,
 		tail.Config{
 			ReOpen:   true,
 			Follow:   true,
@@ -60,11 +60,19 @@ func main() {
 	if err != nil {
 		log.Fatal("Tail file %+v", err)
 	}
-	log.Info("monitor file %s...", opts.Monitor.File)
+	log.Info("monitor file %s...", opts.File)
+
+	dingTalk := dt.NewRobot(opts.Robot.Token, opts.Robot.Secret)
 
 	for line := range tf.Lines {
-		if ok, _ := regexp.Match(opts.Monitor.KeyWord, []byte(line.Text)); ok {
-			log.Info("%s", dingToInfo(line.Text))
+		if ok, _ := regexp.Match(opts.KeyWord, []byte(line.Text)); ok {
+			err = dingTalk.SendTextMessage(line.Text, opts.Robot.AtMobiles, opts.Robot.IsAtAll)
+			if err != nil {
+				log.Error("%+v", err)
+				continue
+			}
+
+			log.Info("send message <%s> success", line.Text)
 		}
 	}
 }
@@ -78,60 +86,32 @@ func initLog() {
 
 func parseArg() {
 	parser := flags.NewParser(&opts, flags.HelpFlag|flags.PassDoubleDash)
+	parser.NamespaceDelimiter = "-"
+
 	if AppName != "" {
 		parser.Name = AppName
 	}
 
 	if _, err := parser.Parse(); err != nil {
 		if opts.Version {
+			// -v
 			printVersion()
 			os.Exit(0)
 		}
 
 		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
+			// -h
 			_, _ = fmt.Fprintln(os.Stdout, err)
 			os.Exit(0)
 		}
 
+		// err
 		_, _ = fmt.Fprintln(os.Stderr, err)
 
 		parser.WriteHelp(os.Stderr)
 
 		os.Exit(1)
 	}
-}
-
-func dingToInfo(msg string) []byte {
-	content, data := make(map[string]string), make(map[string]interface{})
-
-	content["content"] = msg
-	data["msgtype"] = "text"
-	data["text"] = content
-	b, _ := json.Marshal(data)
-
-	log.Info("send to %s data <%s>",
-		opts.Monitor.WebHookUrl,
-		b)
-
-	resp, err := http.Post(opts.Monitor.WebHookUrl,
-		"application/json",
-		bytes.NewBuffer(b))
-	if err != nil {
-		log.Error("send request to %s %+v",
-			opts.Monitor.WebHookUrl,
-			err)
-
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	body, _ := ioutil.ReadAll(resp.Body)
-	log.Info("send to %s data <%s> result is %s",
-		opts.Monitor.WebHookUrl,
-		b,
-		body)
-	return body
 }
 
 // printVersion Print out version information
