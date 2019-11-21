@@ -31,10 +31,11 @@ GoVersion: %s
 	bannerBase64 = "DQogX18gIF9fICBfX19fXyAgXyAgXyAgX19fXyAgX19fXyAgX19fX18gIF9fX18gDQooICBcLyAgKSggIF8gICkoIFwoICkoXyAgXykoXyAgXykoICBfICApKCAgXyBcDQogKSAgICAoICApKF8pKCAgKSAgKCAgXykoXyAgICkoICAgKShfKSggICkgICAvDQooXy9cL1xfKShfX19fXykoXylcXykoX19fXykgKF9fKSAoX19fX18pKF8pXF8pDQo="
 
 	opts struct {
-		File    string `short:"f" long:"monitor-file" env:"MONITOR_FILE" description:"The file to be monitored" required:"true"`
-		KeyWord string `short:"k" long:"search-keyword" env:"SEARCH_KEYWORD" description:"Key word to be search for" default:"ERRO"`
-		Version bool   `short:"v" long:"version" description:"Show version info"`
-		Robot   robot  `group:"DingTalk Robot Options" namespace:"robot" env-namespace:"ROBOT" `
+		File              string `short:"f" long:"monitor-file" env:"MONITOR_FILE" description:"The file to be monitored" required:"true"`
+		KeyWord           string `short:"k" long:"search-keyword" env:"SEARCH_KEYWORD" description:"Keyword to be search for" default:"ERRO"`
+		KeyWordIgnoreCase bool   `short:"c" long:"keyword-case-sensitive" env:"KEYWORD_IGNORE_CASE" description:"Whether Keyword ignore case"`
+		Version           bool   `short:"v" long:"version" description:"Show version info"`
+		Robot             robot  `group:"DingTalk Robot Options" namespace:"robot" env-namespace:"ROBOT" `
 	}
 )
 
@@ -61,13 +62,22 @@ func main() {
 	if err != nil {
 		log.Fatal("Tail file %+v", err)
 	}
-	log.Info("monitor file %s...", opts.File)
+	log.Info("monitor file <%s>, filter by <%s>, ignore case <%v>...",
+		opts.File,
+		opts.KeyWord,
+		opts.KeyWordIgnoreCase)
 
 	dingTalk := dt.NewRobot(opts.Robot.Token, opts.Robot.Secret)
 
-	opts.KeyWord = strings.ToLower(opts.KeyWord)
+	if opts.KeyWordIgnoreCase {
+		opts.KeyWord = strings.ToLower(opts.KeyWord)
+	}
 	for line := range tf.Lines {
-		text := strings.ToLower(line.Text)
+		text := line.Text
+		if opts.KeyWordIgnoreCase {
+			text = strings.ToLower(text)
+		}
+
 		if ok, _ := regexp.Match(opts.KeyWord, []byte(text)); ok {
 			err = dingTalk.SendTextMessage(line.Text, opts.Robot.AtMobiles, opts.Robot.IsAtAll)
 			if err != nil {
