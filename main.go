@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hpcloud/tail"
 	"github.com/jessevdk/go-flags"
+	"strings"
 	log "unknwon.dev/clog/v2"
 
 	dt "github.com/JetBlink/dingtalk-notify-go-sdk"
@@ -31,7 +32,7 @@ GoVersion: %s
 
 	opts struct {
 		File    string `short:"f" long:"monitor-file" env:"MONITOR_FILE" description:"The file to be monitored" required:"true"`
-		KeyWord string `short:"k" long:"search-keyword" env:"SEARCH_KEYWORD" description:"Key word to be search for" required:"true"`
+		KeyWord string `short:"k" long:"search-keyword" env:"SEARCH_KEYWORD" description:"Key word to be search for" default:"ERRO"`
 		Version bool   `short:"v" long:"version" description:"Show version info"`
 		Robot   robot  `group:"DingTalk Robot Options" namespace:"robot" env-namespace:"ROBOT" `
 	}
@@ -64,8 +65,10 @@ func main() {
 
 	dingTalk := dt.NewRobot(opts.Robot.Token, opts.Robot.Secret)
 
+	opts.KeyWord = strings.ToLower(opts.KeyWord)
 	for line := range tf.Lines {
-		if ok, _ := regexp.Match(opts.KeyWord, []byte(line.Text)); ok {
+		text := strings.ToLower(line.Text)
+		if ok, _ := regexp.Match(opts.KeyWord, []byte(text)); ok {
 			err = dingTalk.SendTextMessage(line.Text, opts.Robot.AtMobiles, opts.Robot.IsAtAll)
 			if err != nil {
 				log.Error("%+v", err)
