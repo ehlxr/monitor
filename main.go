@@ -31,6 +31,7 @@ GoVersion: %s
 	bannerBase64 = "DQogX18gIF9fICBfX19fXyAgXyAgXyAgX19fXyAgX19fXyAgX19fX18gIF9fX18gDQooICBcLyAgKSggIF8gICkoIFwoICkoXyAgXykoXyAgXykoICBfICApKCAgXyBcDQogKSAgICAoICApKF8pKCAgKSAgKCAgXykoXyAgICkoICAgKShfKSggICkgICAvDQooXy9cL1xfKShfX19fXykoXylcXykoX19fXykgKF9fKSAoX19fX18pKF8pXF8pDQo="
 
 	opts struct {
+		AppName           string `short:"n" long:"monitor-app-name" env:"MONITOR_APP_NAME" description:"The name of the application being monitored, which will be added to the content before"`
 		File              string `short:"f" long:"monitor-file" env:"MONITOR_FILE" description:"The file to be monitored" required:"true"`
 		KeyWord           string `short:"k" long:"search-keyword" env:"SEARCH_KEYWORD" description:"Keyword to be search for" default:"ERRO"`
 		KeyWordIgnoreCase bool   `short:"c" long:"keyword-case-sensitive" env:"KEYWORD_IGNORE_CASE" description:"Whether Keyword ignore case"`
@@ -62,7 +63,8 @@ func main() {
 	if err != nil {
 		log.Fatal("Tail file %+v", err)
 	}
-	log.Info("monitor file <%s>, filter by <%s>, ignore case <%v>...",
+	log.Info("monitor app <%s> file <%s>, filter by <%s>, ignore case <%v>...",
+		opts.AppName,
 		opts.File,
 		opts.KeyWord,
 		opts.KeyWordIgnoreCase)
@@ -79,8 +81,13 @@ func main() {
 		}
 
 		if ok, _ := regexp.Match(opts.KeyWord, []byte(text)); ok {
-			err = dingTalk.SendTextMessage(line.Text, opts.Robot.AtMobiles, opts.Robot.IsAtAll)
-			if err != nil {
+
+			if err = dingTalk.SendTextMessage(
+				// opts.AppName,
+				fmt.Sprintf("%s\n%s", opts.AppName, line.Text),
+				opts.Robot.AtMobiles,
+				opts.Robot.IsAtAll,
+			); err != nil {
 				log.Error("%+v", err)
 				continue
 			}
