@@ -1,60 +1,52 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
+	"github.com/ehlxr/monitor/pkg"
 	"github.com/hpcloud/tail"
-	"github.com/jessevdk/go-flags"
 	"strings"
+	"time"
 	log "unknwon.dev/clog/v2"
 
 	dt "github.com/JetBlink/dingtalk-notify-go-sdk"
-	"os"
 	"regexp"
 )
 
 var (
-	AppName   string
-	Version   string
-	BuildTime string
-	GitCommit string
-	GoVersion string
-
-	versionTpl = `%s
-Name: %s
-Version: %s
-BuildTime: %s
-GitCommit: %s
-GoVersion: %s
-
-`
-	bannerBase64 = "DQogX18gIF9fICBfX19fXyAgXyAgXyAgX19fXyAgX19fXyAgX19fX18gIF9fX18gDQooICBcLyAgKSggIF8gICkoIFwoICkoXyAgXykoXyAgXykoICBfICApKCAgXyBcDQogKSAgICAoICApKF8pKCAgKSAgKCAgXykoXyAgICkoICAgKShfKSggICkgICAvDQooXy9cL1xfKShfX19fXykoXylcXykoX19fXykgKF9fKSAoX19fX18pKF8pXF8pDQo="
-
-	opts struct {
-		AppName           string `short:"n" long:"monitor-app-name" env:"MONITOR_APP_NAME" description:"The name of the application being monitored, which will be added to the content before"`
-		File              string `short:"f" long:"monitor-file" env:"MONITOR_FILE" description:"The file to be monitored" required:"true"`
-		KeyWord           string `short:"k" long:"search-keyword" env:"SEARCH_KEYWORD" description:"Keyword to be search for" default:"ERRO"`
-		KeyWordIgnoreCase bool   `short:"c" long:"keyword-case-sensitive" env:"KEYWORD_IGNORE_CASE" description:"Whether Keyword ignore case"`
-		Version           bool   `short:"v" long:"version" description:"Show version info"`
-		Robot             robot  `group:"DingTalk Robot Options" namespace:"robot" env-namespace:"ROBOT" `
-	}
+	dingTalk *dt.Robot
+	limiter  *pkg.LimiterServer
 )
 
-type robot struct {
-	Token     string   `short:"t" long:"token" env:"TOKEN" description:"DingTalk robot access token" required:"true"`
-	Secret    string   `short:"s" long:"secret" env:"SECRET" description:"DingTalk robot secret"`
-	AtMobiles []string `short:"m" long:"at-mobiles" env:"AT_MOBILES" env-delim:"," description:"The mobile of the person will be at"`
-	IsAtAll   bool     `short:"a" long:"at-all" env:"AT_ALL" description:"Whether at everyone"`
-}
-
 func init() {
-	initLog()
+	err := log.NewConsole()
+	if err != nil {
+		panic("unable to create new logger: " + err.Error())
+	}
 }
 
 func main() {
-	parseArg()
+	pkg.ParseArg()
 
-	tf, err := tail.TailFile(opts.File,
+	dingTalk = dt.NewRobot(pkg.Opts.Robot.Token, pkg.Opts.Robot.Secret)
+	limiter = pkg.NewLimiterServer(1*time.Minute, 20)
+
+	tailFile()
+}
+
+func sendMsg(content string) {
+	if err := dingTalk.SendTextMessage(
+		fmt.Sprintf("%s\n%s", pkg.Opts.AppName, content),
+		pkg.Opts.Robot.AtMobiles,
+		pkg.Opts.Robot.IsAtAll,
+	); err != nil {
+		log.Error("%+v", err)
+	}
+
+	log.Info("send message <%s> success", content)
+}
+
+func tailFile() {
+	tf, err := tail.TailFile(pkg.Opts.File,
 		tail.Config{
 			ReOpen:   true,
 			Follow:   true,
@@ -63,79 +55,32 @@ func main() {
 	if err != nil {
 		log.Fatal("Tail file %+v", err)
 	}
-	log.Info("monitor app <%s> file <%s>, filter by <%s>, ignore case <%v>...",
-		opts.AppName,
-		opts.File,
-		opts.KeyWord,
-		opts.KeyWordIgnoreCase)
 
-	dingTalk := dt.NewRobot(opts.Robot.Token, opts.Robot.Secret)
-
-	if opts.KeyWordIgnoreCase {
-		opts.KeyWord = strings.ToLower(opts.KeyWord)
+	if pkg.Opts.KeyWordIgnoreCase {
+		pkg.Opts.KeyWord = strings.ToLower(pkg.Opts.KeyWord)
 	}
+
+	log.Info("monitor app <%s> file <%s>, filter by <%s>, ignore case <%v>...",
+		pkg.Opts.AppName,
+		pkg.Opts.File,
+		pkg.Opts.KeyWord,
+		pkg.Opts.KeyWordIgnoreCase)
+
 	for line := range tf.Lines {
 		text := line.Text
-		if opts.KeyWordIgnoreCase {
+		if pkg.Opts.KeyWordIgnoreCase {
 			text = strings.ToLower(text)
 		}
 
-		if ok, _ := regexp.Match(opts.KeyWord, []byte(text)); ok {
+		if ok, _ := regexp.Match(pkg.Opts.KeyWord, []byte(text)); ok {
+			if limiter.IsAvailable() {
+				limiter.Increase()
 
-			if err = dingTalk.SendTextMessage(
-				// opts.AppName,
-				fmt.Sprintf("%s\n%s", opts.AppName, line.Text),
-				opts.Robot.AtMobiles,
-				opts.Robot.IsAtAll,
-			); err != nil {
-				log.Error("%+v", err)
-				continue
+				sendMsg(line.Text)
+			} else {
+				log.Error("dingTalk 1 m allow send 20 msg. msg %v discarded.",
+					line.Text)
 			}
-
-			log.Info("send message <%s> success", line.Text)
 		}
 	}
-}
-
-func initLog() {
-	err := log.NewConsole()
-	if err != nil {
-		panic("unable to create new logger: " + err.Error())
-	}
-}
-
-func parseArg() {
-	parser := flags.NewParser(&opts, flags.HelpFlag|flags.PassDoubleDash)
-	parser.NamespaceDelimiter = "-"
-
-	if AppName != "" {
-		parser.Name = AppName
-	}
-
-	if _, err := parser.Parse(); err != nil {
-		if opts.Version {
-			// -v
-			printVersion()
-			os.Exit(0)
-		}
-
-		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
-			// -h
-			_, _ = fmt.Fprintln(os.Stdout, err)
-			os.Exit(0)
-		}
-
-		// err
-		_, _ = fmt.Fprintln(os.Stderr, err)
-
-		parser.WriteHelp(os.Stderr)
-
-		os.Exit(1)
-	}
-}
-
-// printVersion Print out version information
-func printVersion() {
-	banner, _ := base64.StdEncoding.DecodeString(bannerBase64)
-	fmt.Printf(versionTpl, banner, AppName, Version, BuildTime, GitCommit, GoVersion)
 }
