@@ -10,9 +10,7 @@ func TestLimiter(t *testing.T) {
 
 	for {
 		if limiter.IsAvailable() {
-			limiter.Increase()
-
-			t.Log("hello...", limiter.ReqCount)
+			t.Log("hello...", limiter.reqCount)
 		} else {
 			return
 		}

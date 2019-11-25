@@ -74,8 +74,6 @@ func tailFile() {
 
 		if ok, _ := regexp.Match(pkg.Opts.KeyWord, []byte(text)); ok {
 			if limiter.IsAvailable() {
-				limiter.Increase()
-
 				sendMsg(line.Text)
 			} else {
 				log.Error("dingTalk 1 m allow send 20 msg. msg %v discarded.",

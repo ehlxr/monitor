@@ -3,47 +3,40 @@ package pkg
 import (
 	"sync"
 	"time"
-	log "unknwon.dev/clog/v2"
 )
 
 type LimiterServer struct {
-	Interval time.Duration
-	MaxCount int
-	Lock     sync.Mutex
-	ReqCount int
+	interval time.Duration
+	maxCount int
+	sync.Mutex
+	reqCount  int
+	startTime time.Time
 }
 
-func NewLimiterServer(interval time.Duration, maxCount int) *LimiterServer {
-	limiter := &LimiterServer{
-		Interval: interval,
-		MaxCount: maxCount,
+func NewLimiterServer(i time.Duration, c int) *LimiterServer {
+	return &LimiterServer{
+		interval: i,
+		maxCount: c,
 	}
-
-	go func() {
-		ticker := time.NewTicker(interval)
-		for {
-			<-ticker.C
-			limiter.Lock.Lock()
-			log.Info("Reset LimiterServer Count...")
-
-			limiter.ReqCount = 0
-			limiter.Lock.Unlock()
-		}
-	}()
-
-	return limiter
-}
-
-func (limiter *LimiterServer) Increase() {
-	limiter.Lock.Lock()
-	defer limiter.Lock.Unlock()
-
-	limiter.ReqCount += 1
 }
 
 func (limiter *LimiterServer) IsAvailable() bool {
-	limiter.Lock.Lock()
-	defer limiter.Lock.Unlock()
+	limiter.Lock()
+	defer limiter.Unlock()
 
-	return limiter.ReqCount < limiter.MaxCount
+	if limiter.startTime.IsZero() ||
+		limiter.startTime.Add(limiter.interval).Before(time.Now()) {
+		limiter.reqCount = 1
+		limiter.startTime = time.Now()
+
+		return true
+	}
+
+	if limiter.reqCount < limiter.maxCount {
+		limiter.reqCount += 1
+
+		return true
+	}
+
+	return false
 }
