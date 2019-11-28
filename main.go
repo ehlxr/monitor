@@ -72,12 +72,15 @@ func tailFile() {
 			text = strings.ToLower(text)
 		}
 
-		if ok, _ := regexp.Match(pkg.Opts.KeyWord, []byte(text)); ok {
-			if limiter.IsAvailable() {
-				sendMsg(line.Text)
-			} else {
-				log.Error("dingTalk 1 m allow send 20 msg. msg %v discarded.",
-					line.Text)
+		keys := strings.Split(pkg.Opts.KeyWord, ",")
+		for _, key := range keys {
+			if ok, _ := regexp.Match(strings.TrimSpace(key), []byte(text)); ok {
+				if limiter.IsAvailable() {
+					sendMsg(line.Text)
+				} else {
+					log.Error("dingTalk 1 m allow send 20 msg. msg %v discarded.",
+						line.Text)
+				}
 			}
 		}
 	}

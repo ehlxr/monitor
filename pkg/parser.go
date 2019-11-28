@@ -10,7 +10,7 @@ var (
 	Opts struct {
 		AppName           string `short:"n" long:"monitor-app-name" env:"MONITOR_APP_NAME" description:"The name of the application being monitored, which will be added to the content before"`
 		File              string `short:"f" long:"monitor-file" env:"MONITOR_FILE" description:"The file to be monitored" required:"true"`
-		KeyWord           string `short:"k" long:"search-keyword" env:"SEARCH_KEYWORD" description:"Keyword to be search for" default:"ERRO"`
+		KeyWord           string `short:"k" long:"search-keyword" env:"SEARCH_KEYWORD" description:"Keyword to be search for, Multiple values separated by ','" default:"ERRO"`
 		KeyWordIgnoreCase bool   `short:"c" long:"keyword-case-sensitive" env:"KEYWORD_IGNORE_CASE" description:"Whether Keyword ignore case"`
 		Version           bool   `short:"v" long:"version" description:"Show version info"`
 		Robot             Robot  `group:"DingTalk Robot Options" namespace:"robot" env-namespace:"ROBOT" `
