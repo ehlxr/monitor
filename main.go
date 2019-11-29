@@ -81,6 +81,7 @@ func tailFile() {
 					log.Error("dingTalk 1 m allow send 20 msg. msg %v discarded.",
 						line.Text)
 				}
+				break
 			}
 		}
 	}
