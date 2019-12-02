@@ -1,5 +1,10 @@
 # Monitor
 
+[![license](https://badgen.net/badge/license/MIT/blue)](./LICENSE)
+[![](https://badgen.net/github/commits/ehlxr/monitor)](https://github.com/ehlxr/monitor/commits/)
+[![](https://badgen.net/github/last-commit/ehlxr/monitor)]((https://github.com/ehlxr/monitor/commits/))
+[![](https://badgen.net/github/releases/ehlxr/monitor)](https://github.com/ehlxr/monitor/releases)
+
 ```bash
 Usage:
   monitor [OPTIONS]
