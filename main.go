@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/ehlxr/monitor/pkg"
-	"github.com/hpcloud/tail"
 	"strings"
 	"time"
+
+	"github.com/ehlxr/monitor/pkg"
+	"github.com/hpcloud/tail"
 	log "unknwon.dev/clog/v2"
 
-	dt "github.com/JetBlink/dingtalk-notify-go-sdk"
 	"regexp"
+
+	dt "github.com/JetBlink/dingtalk-notify-go-sdk"
 )
 
 var (
@@ -66,6 +69,19 @@ func tailFile() {
 		pkg.Opts.KeyWord,
 		pkg.Opts.KeyWordIgnoreCase)
 
+	var buffer bytes.Buffer
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		for {
+			<-ticker.C
+			log.Info("will send msg to dingtalk...")
+			if buffer.Len() > 0 {
+				sendMsg(buffer.String())
+				buffer.Reset()
+			}
+		}
+	}()
+
 	for line := range tf.Lines {
 		text := line.Text
 		if pkg.Opts.KeyWordIgnoreCase {
@@ -75,12 +91,16 @@ func tailFile() {
 		keys := strings.Split(pkg.Opts.KeyWord, ",")
 		for _, key := range keys {
 			if ok, _ := regexp.Match(strings.TrimSpace(key), []byte(text)); ok {
-				if limiter.IsAvailable() {
-					sendMsg(line.Text)
-				} else {
-					log.Error("dingTalk 1 m allow send 20 msg. msg %v discarded.",
-						line.Text)
-				}
+				//if limiter.IsAvailable() {
+				//	sendMsg(line.Text)
+				//} else {
+				//	log.Error("dingTalk 1 m allow send 20 msg. msg %v discarded.",
+				//		line.Text)
+				//}
+
+				buffer.WriteString(line.Text)
+				buffer.WriteByte('\n')
+
 				break
 			}
 		}
