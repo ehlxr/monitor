@@ -70,15 +70,17 @@ func tailFile() {
 		pkg.Opts.KeyWordIgnoreCase)
 
 	var buffer bytes.Buffer
+	var times int
 	go func() {
 		ticker := time.NewTicker(1 * time.Minute)
 		for {
 			<-ticker.C
-			log.Info("will send msg to dingtalk...")
-			if buffer.Len() > 0 {
+			if buffer.Len() > 0 && times > 2 {
 				sendMsg(buffer.String())
 				buffer.Reset()
 			}
+
+			times = 0
 		}
 	}()
 
@@ -100,6 +102,7 @@ func tailFile() {
 
 				buffer.WriteString(line.Text)
 				buffer.WriteByte('\n')
+				times++
 
 				break
 			}
