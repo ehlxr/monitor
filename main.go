@@ -71,7 +71,7 @@ func tailFile() {
 
 	var buffer bytes.Buffer
 	go func() {
-		ticker := time.NewTicker(10 * time.Second)
+		ticker := time.NewTicker(1 * time.Minute)
 		for {
 			<-ticker.C
 			log.Info("will send msg to dingtalk...")
