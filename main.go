@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"time"
@@ -37,12 +36,15 @@ func main() {
 }
 
 func sendMsg(content string) {
-	if err := dingTalk.SendTextMessage(
+	if err := dingTalk.SendMarkdownMessage(
+		"new message",
 		fmt.Sprintf("%s\n%s", pkg.Opts.AppName, content),
 		pkg.Opts.Robot.AtMobiles,
 		pkg.Opts.Robot.IsAtAll,
 	); err != nil {
 		log.Error("%+v", err)
+
+		return
 	}
 
 	log.Info("send message <%s> success", content)
@@ -69,7 +71,7 @@ func tailFile() {
 		pkg.Opts.KeyWord,
 		pkg.Opts.KeyWordIgnoreCase)
 
-	var buffer bytes.Buffer
+	var buffer strings.Builder
 	var times int
 	go func() {
 		ticker := time.NewTicker(1 * time.Minute)
@@ -80,6 +82,7 @@ func tailFile() {
 				buffer.Reset()
 			}
 
+			buffer.Reset()
 			times = 0
 		}
 	}()
@@ -99,9 +102,7 @@ func tailFile() {
 				//	log.Error("dingTalk 1 m allow send 20 msg. msg %v discarded.",
 				//		line.Text)
 				//}
-
-				buffer.WriteString(line.Text)
-				buffer.WriteByte('\n')
+				buffer.WriteString("- " + line.Text + "\n")
 				times++
 
 				break
