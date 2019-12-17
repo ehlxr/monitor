@@ -77,13 +77,14 @@ func tailFile() {
 		ticker := time.NewTicker(1 * time.Minute)
 		for {
 			<-ticker.C
-			if buffer.Len() > 0 && times > 2 {
+			//if buffer.Len() > 0 && times > 2 {
+			if buffer.Len() > 0 {
 				sendMsg(buffer.String())
 				buffer.Reset()
 			}
 
-			buffer.Reset()
-			times = 0
+			//buffer.Reset()
+			//times = 0
 		}
 	}()
 
@@ -97,7 +98,7 @@ func tailFile() {
 		for _, key := range keys {
 			if ok, _ := regexp.Match(strings.TrimSpace(key), []byte(text)); ok {
 				//if limiter.IsAvailable() {
-				//	sendMsg(line.Text)
+				//	sendMsg("- " + line.Text + "\n")
 				//} else {
 				//	log.Error("dingTalk 1 m allow send 20 msg. msg %v discarded.",
 				//		line.Text)
