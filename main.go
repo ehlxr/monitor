@@ -16,7 +16,7 @@ import (
 
 var (
 	dingTalk *dt.Robot
-	limiter  *pkg.LimiterServer
+	//limiter  *pkg.LimiterServer
 )
 
 func init() {
@@ -30,7 +30,7 @@ func main() {
 	pkg.ParseArg()
 
 	dingTalk = dt.NewRobot(pkg.Opts.Robot.Token, pkg.Opts.Robot.Secret)
-	limiter = pkg.NewLimiterServer(1*time.Minute, 20)
+	//limiter = pkg.NewLimiterServer(1*time.Minute, 20)
 
 	tailFile()
 }

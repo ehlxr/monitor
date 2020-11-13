@@ -2,8 +2,9 @@ package pkg
 
 import (
 	"fmt"
-	"github.com/jessevdk/go-flags"
 	"os"
+
+	"github.com/jessevdk/go-flags"
 )
 
 var (
